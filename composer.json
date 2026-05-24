@@ -1,0 +1,47 @@
+{
+    "name": "amashukov/ton-wallet-php",
+    "description": "TON Wallet v4r2 contract wrapper + internal-message builder + address parser/serializer in pure PHP. Offline transfer assembly; pluggable RPC for seqno + broadcast.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["ton", "the-open-network", "wallet", "wallet-v4r2", "address", "blockchain"],
+    "authors": [
+        {
+            "name": "Andrei Mashukov",
+            "email": "a.mashukoff@gmail.com",
+            "homepage": "https://github.com/AndreyMashukov"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "ext-bcmath": "*",
+        "amashukov/ton-cell-php": "^0.1.0",
+        "amashukov/ton-crypto-php": "^0.1.0"
+    },
+    "require-dev": {
+        "amashukov/rector-php-rules": "^0.1.0",
+        "friendsofphp/php-cs-fixer": "^3.50",
+        "phpstan/phpstan": "^2.0",
+        "phpunit/phpunit": "^11.0",
+        "rector/rector": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Amashukov\\TonWallet\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Amashukov\\TonWallet\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit",
+        "stan": "phpstan analyse --memory-limit=512M",
+        "cs": "php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "php-cs-fixer fix",
+        "rector": "rector process --dry-run"
+    }
+}
