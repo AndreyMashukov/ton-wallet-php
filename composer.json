@@ -3,7 +3,12 @@
     "description": "TON Wallet v4r2 contract wrapper + internal-message builder + address parser/serializer in pure PHP. Offline transfer assembly; pluggable RPC for seqno + broadcast.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["ton", "the-open-network", "wallet", "wallet-v4r2", "address", "blockchain"],
+    "homepage": "https://github.com/AndreyMashukov/ton-wallet-php",
+    "keywords": ["ton", "the-open-network", "wallet", "wallet-v4r2", "address", "blockchain", "ton-wallet", "internal-message", "boc", "ed25519", "crypto", "php"],
+    "support": {
+        "issues": "https://github.com/AndreyMashukov/ton-wallet-php/issues",
+        "source": "https://github.com/AndreyMashukov/ton-wallet-php"
+    },
     "authors": [
         {
             "name": "Andrei Mashukov",
