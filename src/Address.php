@@ -73,6 +73,11 @@ final readonly class Address
         return new AddressData($this->wc, $this->hashPart);
     }
 
+    public static function fromAddressData(AddressData $data): self
+    {
+        return new self(wc: $data->wc, hashPart: $data->hashPart, isUserFriendly: false);
+    }
+
     public function toString(
         ?bool $userFriendly = null,
         ?bool $urlSafe = null,

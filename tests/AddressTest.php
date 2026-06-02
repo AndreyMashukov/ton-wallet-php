@@ -80,6 +80,40 @@ final class AddressTest extends TestCase
         self::assertSame($addr->hashPart, $data->hashPart);
     }
 
+    public function testFromAddressDataRoundTripsWithToCellData(): void
+    {
+        $original = Address::parse(self::RAW);
+        $rebuilt  = Address::fromAddressData($original->toCellData());
+
+        self::assertSame($original->wc, $rebuilt->wc);
+        self::assertSame($original->hashPart, $rebuilt->hashPart);
+        self::assertSame(
+            $original->toString(userFriendly: false),
+            $rebuilt->toString(userFriendly: false),
+        );
+    }
+
+    public function testFromAddressDataBuildsFromRawAddressData(): void
+    {
+        $hashPart = hex2bin('4b9e4e5f0cf641f9b9a251c5cb550f5d8329d8b9afe19b52be9e13e92ebb7817');
+        self::assertIsString($hashPart);
+
+        $addr = Address::fromAddressData(new AddressData(0, $hashPart));
+
+        self::assertSame(self::RAW, $addr->toString(userFriendly: false));
+        self::assertStringStartsWith('EQ', $addr->toString(userFriendly: true, urlSafe: true, bounceable: true));
+    }
+
+    public function testFromAddressDataRejectsBadWorkchain(): void
+    {
+        $hashPart = hex2bin('4b9e4e5f0cf641f9b9a251c5cb550f5d8329d8b9afe19b52be9e13e92ebb7817');
+        self::assertIsString($hashPart);
+
+        $this->expectException(InvalidArgumentException::class);
+
+        Address::fromAddressData(new AddressData(2, $hashPart));
+    }
+
     public function testIsValidTrueForValidAddress(): void
     {
         self::assertTrue(Address::isValid(self::RAW));
