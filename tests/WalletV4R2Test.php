@@ -164,12 +164,12 @@ final class WalletV4R2Test extends TestCase
         self::assertSame(bin2hex($body->hash()), bin2hex($slice->loadRef()->hash()));
     }
 
-    public function testSendTransferAtSeqnoZeroDeploysTheWalletWithItsStateInit(): void
+    public function testSendTransferAtSeqnoZeroDeploysTheWalletWhenAskedTo(): void
     {
         $rpc    = new RecordingWalletRpc(seqno: 0);
         $wallet = new WalletV4R2(KeyPair::fromSeed(str_repeat("\x0d", 32)));
 
-        $wallet->sendTransfer($rpc, [$this->transferTo($wallet)], validUntil: 1_746_537_600);
+        $wallet->sendTransfer($rpc, [$this->transferTo($wallet)], validUntil: 1_746_537_600, deployIfNeeded: true);
 
         self::assertCount(2, $this->broadcastRefs($rpc));
         self::assertSame(bin2hex($wallet->stateInit()->hash()), bin2hex($this->broadcastRefs($rpc)[0]->hash()));
@@ -178,6 +178,16 @@ final class WalletV4R2Test extends TestCase
     public function testSendTransferOnADeployedWalletSendsNoStateInit(): void
     {
         $rpc    = new RecordingWalletRpc(seqno: 7);
+        $wallet = new WalletV4R2(KeyPair::fromSeed(str_repeat("\x0d", 32)));
+
+        $wallet->sendTransfer($rpc, [$this->transferTo($wallet)], validUntil: 1_746_537_600, deployIfNeeded: true);
+
+        self::assertCount(1, $this->broadcastRefs($rpc));
+    }
+
+    public function testSendTransferAtSeqnoZeroSendsNoStateInitUnlessAskedTo(): void
+    {
+        $rpc    = new RecordingWalletRpc(seqno: 0);
         $wallet = new WalletV4R2(KeyPair::fromSeed(str_repeat("\x0d", 32)));
 
         $wallet->sendTransfer($rpc, [$this->transferTo($wallet)], validUntil: 1_746_537_600);

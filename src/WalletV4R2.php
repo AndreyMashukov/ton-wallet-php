@@ -108,10 +108,11 @@ final readonly class WalletV4R2
         array $messages,
         int $validUntil,
         int $sendMode = 3,
+        bool $deployIfNeeded = false,
     ): void {
         $seqno = $this->getSeqno($rpc);
         $body  = $this->createTransfer($seqno, $validUntil, $messages, $sendMode);
-        $ext   = $this->wrapExternalInMessage($body, withStateInit: 0 === $seqno);
+        $ext   = $this->wrapExternalInMessage($body, withStateInit: $deployIfNeeded && 0 === $seqno);
 
         $rpc->sendBoc(Boc::encodeBase64($ext));
     }

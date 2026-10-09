@@ -19,7 +19,7 @@ A pure-PHP implementation of the **TON Wallet v4r2 contract** for [The Open Netw
 - **1..4 messages per transfer** — batch up to four outgoing `InternalMessage`s in a single signed external message, with a per-message `sendMode`.
 - **Full TON address parser** — `Address::parse()` handles user-friendly `UQ…` / `EQ…` (bounceable + non-bounceable, mainnet + testnet, url-safe + standard base64) and raw `workchain:hex` forms, with CRC16 validation.
 - **Address re-serialization** — emit any parsed address in any target form via `Address::toString()` flags or `toTonscanFormat()`.
-- **Deploy on first send** — `stateInit()` builds the wallet's StateInit (the v4r2 code cell ships as `CODE_BOC`); `sendTransfer()` attaches it automatically at seqno 0, so a wallet that only ever received funds deploys with its first outgoing transfer.
+- **Deploy on first send** — `stateInit()` builds the wallet's StateInit (the v4r2 code cell ships as `CODE_BOC`); `sendTransfer(..., deployIfNeeded: true)` attaches it at seqno 0, so a wallet that only ever received funds deploys with its first outgoing transfer; without the flag `sendTransfer()` never attaches it (the behaviour of 0.1.1). `wrapExternalInMessage($body, withStateInit: true)` does the same for a transfer you build yourself.
 - **Pluggable RPC** — implement `WalletRpcInterface` (`getSeqno` + `sendBoc`) once and broadcast through toncenter, a custom node, or a test double.
 
 ## Why amashukov/ton-wallet-php
