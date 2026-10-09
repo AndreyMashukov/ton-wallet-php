@@ -16,6 +16,8 @@ final readonly class WalletV4R2
 
     public const int CODE_MAX_DEPTH = 7;
 
+    public const string CODE_BOC = 'te6ccgECFAEAAtQAART/APSkE/S88sgLAQIBIAIDAgFIBAUE+PKDCNcYINMf0x/THwL4I7vyZO1E0NMf0x/T//QE0VFDuvKhUVG68qIF+QFUEGT5EPKj+AAkpMjLH1JAyx9SMMv/UhD0AMntVPgPAdMHIcAAn2xRkyDXSpbTB9QC+wDoMOAhwAHjACHAAuMAAcADkTDjDQOkyMsfEssfy/8QERITAubQAdDTAyFxsJJfBOAi10nBIJJfBOAC0x8hghBwbHVnvSKCEGRzdHK9sJJfBeAD+kAwIPpEAcjKB8v/ydDtRNCBAUDXIfQEMFyBAQj0Cm+hMbOSXwfgBdM/yCWCEHBsdWe6kjgw4w0DghBkc3RyupJfBuMNBgcCASAICQB4AfoA9AQw+CdvIjBQCqEhvvLgUIIQcGx1Z4MesXCAGFAEywUmzxZY+gIZ9ADLaRfLH1Jgyz8gyYBA+wAGAIpQBIEBCPRZMO1E0IEBQNcgyAHPFvQAye1UAXKwjiOCEGRzdHKDHrFwgBhQBcsFUAPPFiP6AhPLassfyz/JgED7AJJfA+ICASAKCwBZvSQrb2omhAgKBrkPoCGEcNQICEekk30pkQzmkD6f+YN4EoAbeBAUiYcVnzGEAgFYDA0AEbjJftRNDXCx+AA9sp37UTQgQFA1yH0BDACyMoHy//J0AGBAQj0Cm+hMYAIBIA4PABmtznaiaEAga5Drhf/AABmvHfaiaEAQa5DrhY/AAG7SB/oA1NQi+QAFyMoHFcv/ydB3dIAYyMsFywIizxZQBfoCFMtrEszMyXP7AMhAFIEBCPRR8qcCAHCBAQjXGPoA0z/IVCBHgQEI9FHyp4IQbm90ZXB0gBjIywXLAlAGzxZQBPoCFMtqEssfyz/Jc/sAAgBsgQEI1xj6ANM/MFIkgQEI9Fnyp4IQZHN0cnB0gBjIywXLAlAFzxZQA/oCE8tqyx8Syz/Jc/sAAAr0AMntVA==';
+
     public const int DEFAULT_WALLET_ID = 698_983_191;
 
     public const int OP_TRANSFER = 0;
@@ -40,6 +42,24 @@ final readonly class WalletV4R2
             isBounceable: false,
             isUserFriendly: true,
         );
+    }
+
+    public static function code(): Cell
+    {
+        return Boc::decodeBase64(self::CODE_BOC);
+    }
+
+    public function stateInit(): Cell
+    {
+        return (new Builder())
+            ->storeBit(false)
+            ->storeBit(false)
+            ->storeBit(true)
+            ->storeBit(true)
+            ->storeBit(false)
+            ->storeRef(self::code())
+            ->storeRef($this->buildDataCell(0))
+            ->endCell();
     }
 
     public function getSeqno(WalletRpcInterface $rpc): int
@@ -91,19 +111,26 @@ final readonly class WalletV4R2
     ): void {
         $seqno = $this->getSeqno($rpc);
         $body  = $this->createTransfer($seqno, $validUntil, $messages, $sendMode);
-        $ext   = $this->wrapExternalInMessage($body);
+        $ext   = $this->wrapExternalInMessage($body, withStateInit: 0 === $seqno);
 
         $rpc->sendBoc(Boc::encodeBase64($ext));
     }
 
-    public function wrapExternalInMessage(Cell $body): Cell
+    public function wrapExternalInMessage(Cell $body, bool $withStateInit = false): Cell
     {
-        return (new Builder())
+        $message = (new Builder())
             ->storeUint(2, 2)
             ->storeUint(0, 2)
             ->storeAddress($this->address()->toCellData())
-            ->storeCoins(0)
-            ->storeBit(false)
+            ->storeCoins(0);
+
+        if ($withStateInit) {
+            $message->storeBit(true)->storeBit(true)->storeRef($this->stateInit());
+        } else {
+            $message->storeBit(false);
+        }
+
+        return $message
             ->storeBit(true)
             ->storeRef($body)
             ->endCell();

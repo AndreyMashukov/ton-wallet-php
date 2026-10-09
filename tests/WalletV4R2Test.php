@@ -117,6 +117,74 @@ final class WalletV4R2Test extends TestCase
         self::assertSame(bin2hex($body->hash()), bin2hex($bodyRef->hash()));
     }
 
+    public function testCodeCellMatchesThePublishedCodeHashAndDepth(): void
+    {
+        $code = WalletV4R2::code();
+
+        self::assertSame(WalletV4R2::CODE_HASH_HEX, bin2hex($code->hash()));
+        self::assertSame(WalletV4R2::CODE_MAX_DEPTH, $code->maxDepth());
+    }
+
+    public function testStateInitHashesToTheWalletAddress(): void
+    {
+        $wallet = new WalletV4R2(Mnemonic::toKeyPair(self::FIXTURE_PHRASE));
+
+        self::assertSame($wallet->address()->hashPart, $wallet->stateInit()->hash());
+        self::assertSame(self::EXPECTED_ADDRESS_RAW, '0:' . bin2hex($wallet->stateInit()->hash()));
+    }
+
+    public function testStateInitCarriesCodeAndInitialDataAsRefsWithNoOptionalFields(): void
+    {
+        $wallet = new WalletV4R2(KeyPair::fromSeed(str_repeat("\x0c", 32)));
+        $slice  = $wallet->stateInit()->beginParse();
+
+        self::assertFalse($slice->loadBit());
+        self::assertFalse($slice->loadBit());
+        self::assertTrue($slice->loadBit());
+        self::assertSame(WalletV4R2::CODE_HASH_HEX, bin2hex($slice->loadRef()->hash()));
+        self::assertTrue($slice->loadBit());
+        self::assertSame(bin2hex($wallet->buildDataCell(0)->hash()), bin2hex($slice->loadRef()->hash()));
+        self::assertFalse($slice->loadBit());
+    }
+
+    public function testWrapExternalInMessageWithStateInitCarriesItAsARefBeforeTheBody(): void
+    {
+        $wallet = new WalletV4R2(KeyPair::fromSeed(str_repeat("\xab", 32)));
+        $body   = (new Builder())->storeUint(0xDEADBEEF, 32)->endCell();
+
+        $slice = $wallet->wrapExternalInMessage($body, withStateInit: true)->beginParse();
+        $slice->loadUint(2);
+        $slice->loadUint(2);
+        $slice->loadAddress();
+        $slice->loadCoins();
+        self::assertTrue($slice->loadBit());
+        self::assertTrue($slice->loadBit());
+        self::assertSame(bin2hex($wallet->stateInit()->hash()), bin2hex($slice->loadRef()->hash()));
+        self::assertTrue($slice->loadBit());
+        self::assertSame(bin2hex($body->hash()), bin2hex($slice->loadRef()->hash()));
+    }
+
+    public function testSendTransferAtSeqnoZeroDeploysTheWalletWithItsStateInit(): void
+    {
+        $rpc    = new RecordingWalletRpc(seqno: 0);
+        $wallet = new WalletV4R2(KeyPair::fromSeed(str_repeat("\x0d", 32)));
+
+        $wallet->sendTransfer($rpc, [$this->transferTo($wallet)], validUntil: 1_746_537_600);
+
+        self::assertCount(2, $this->broadcastRefs($rpc));
+        self::assertSame(bin2hex($wallet->stateInit()->hash()), bin2hex($this->broadcastRefs($rpc)[0]->hash()));
+    }
+
+    public function testSendTransferOnADeployedWalletSendsNoStateInit(): void
+    {
+        $rpc    = new RecordingWalletRpc(seqno: 7);
+        $wallet = new WalletV4R2(KeyPair::fromSeed(str_repeat("\x0d", 32)));
+
+        $wallet->sendTransfer($rpc, [$this->transferTo($wallet)], validUntil: 1_746_537_600);
+
+        self::assertCount(1, $this->broadcastRefs($rpc));
+    }
+
     public function testCreateTransferRejectsEmptyMessageList(): void
     {
         $wallet = new WalletV4R2(KeyPair::fromSeed(str_repeat("\x00", 32)));
@@ -224,5 +292,22 @@ final class WalletV4R2Test extends TestCase
 
         self::assertCount(1, $cell->refs);
         self::assertSame(bin2hex($bigBody->hash()), bin2hex($cell->refs->toArray()[0]->hash()));
+    }
+
+    private function transferTo(WalletV4R2 $wallet): InternalMessage
+    {
+        return new InternalMessage(dest: $wallet->address(), value: '1000');
+    }
+
+    /**
+     * @return list<Cell>
+     */
+    private function broadcastRefs(RecordingWalletRpc $rpc): array
+    {
+        if (null === $rpc->sentBoc) {
+            self::fail('sendTransfer must broadcast a BOC');
+        }
+
+        return Boc::decodeBase64($rpc->sentBoc)->refs->toArray();
     }
 }

@@ -19,6 +19,7 @@ A pure-PHP implementation of the **TON Wallet v4r2 contract** for [The Open Netw
 - **1..4 messages per transfer** — batch up to four outgoing `InternalMessage`s in a single signed external message, with a per-message `sendMode`.
 - **Full TON address parser** — `Address::parse()` handles user-friendly `UQ…` / `EQ…` (bounceable + non-bounceable, mainnet + testnet, url-safe + standard base64) and raw `workchain:hex` forms, with CRC16 validation.
 - **Address re-serialization** — emit any parsed address in any target form via `Address::toString()` flags or `toTonscanFormat()`.
+- **Deploy on first send** — `stateInit()` builds the wallet's StateInit (the v4r2 code cell ships as `CODE_BOC`); `sendTransfer()` attaches it automatically at seqno 0, so a wallet that only ever received funds deploys with its first outgoing transfer.
 - **Pluggable RPC** — implement `WalletRpcInterface` (`getSeqno` + `sendBoc`) once and broadcast through toncenter, a custom node, or a test double.
 
 ## Why amashukov/ton-wallet-php
@@ -80,6 +81,21 @@ $body  = $wallet->createTransfer($seqno, time() + 60, $messages);
 $ext   = $wallet->wrapExternalInMessage($body);
 
 $signedBocBase64 = Boc::encodeBase64($ext); // hand to any broadcaster
+```
+
+### First transfer from an undeployed wallet
+
+An address that has only received funds holds no code yet. Its first external
+message must carry the StateInit; the network deploys the contract and runs the
+transfer in the same transaction. `sendTransfer()` does this whenever the seqno
+is 0 (attaching it to an already active wallet is harmless — it is ignored).
+Your `WalletRpcInterface::getSeqno()` should answer 0 for an uninitialized account.
+
+```php
+$body = $wallet->createTransfer(0, time() + 60, $messages);
+$ext  = $wallet->wrapExternalInMessage($body, withStateInit: true);
+
+$wallet->stateInit()->hash() === $wallet->address()->hashPart; // true
 ```
 
 ### Parse and re-serialize an address
